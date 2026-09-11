@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Circuit</title>
+<style>
+  :root{
+    --bg:#14171C;
+    --surface:#1E232B;
+    --surface-2:#252B34;
+    --text:#F4F4F2;
+    --text-dim:#8B92A0;
+    --work:#FF6B35;
+    --work-dim:#3A2A1F;
+    --rest:#4ECDC4;
+    --rest-dim:#1F3230;
+    --round:#7C8CFF;
+    --round-dim:#242840;
+    --danger:#E85D5D;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    overflow:hidden;
+    touch-action:manipulation;
+  }
+  #app{
+    height:100vh;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+    transition:background 0.4s ease;
+  }
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 18px 4px;
+  }
+  .app-name{
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:0.02em;
+    color:var(--text-dim);
+  }
+  .icon-btn{
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    padding:8px;
+    font-size:20px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .icon-btn:active{ color:var(--text); }
+
+  /* ---------- main timer screen ---------- */
+  #timerScreen{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:space-between;
+    padding:6px 22px 22px;
+    min-height:0;
+  }
+  .progress-row{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    color:var(--text-dim);
+    font-weight:600;
+    letter-spacing:0.01em;
+    padding:4px 2px;
+  }
+  .phase-pill{
+    padding:4px 12px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.06em;
+  }
+  .phase-pill.work{ background:var(--work); color:#1a0f08; }
+  .phase-pill.rest{ background:var(--rest); color:#082825; }
+  .phase-pill.roundrest{ background:var(--round); color:#0e1030; }
+  .phase-pill.idle{ background:var(--surface-2); color:var(--text-dim); }
+
+  .center-stack{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    min-height:0;
+    width:100%;
+  }
+  .exercise-name{
+    font-size:clamp(22px, 7vw, 32px);
+    font-weight:800;
+    line-height:1.15;
+    margin:0 0 6px;
+    padding:0 4px;
+  }
+  .exercise-side{
+    font-size:15px;
+    color:var(--text-dim);
+    font-weight:600;
+    margin-bottom:18px;
+  }
+  .timer-display{
+    font-size:clamp(72px, 26vw, 118px);
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-0.02em;
+    line-height:1;
+    margin:8px 0 18px;
+  }
+  .next-up{
+    font-size:14px;
+    color:var(--text-dim);
+    font-weight:500;
+    min-height:20px;
+  }
+  .next-up b{ color:var(--text); font-weight:700; }
+
+  .controls{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    padding-top:10px;
+  }
+  .btn{
+    border:none;
+    border-radius:18px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-primary{
+    flex:1;
+    max-width:280px;
+    padding:18px 0;
+    font-size:19px;
+    background:var(--work);
+    color:#1a0f08;
+  }
+  .btn-primary.running{ background:var(--surface-2); color:var(--text); }
+  .btn-primary:active{ opacity:0.85; }
+  .btn-secondary{
+    padding:18px 20px;
+    font-size:15px;
+    background:var(--surface);
+    color:var(--text-dim);
+  }
+  .btn-secondary:active{ color:var(--text); }
+
+  .done-screen{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    gap:6px;
+  }
+  .done-screen .big{ font-size:44px; font-weight:800; }
+  .done-screen .sub{ color:var(--text-dim); font-size:15px; }
+
+  /* ---------- edit screen ---------- */
+  #editScreen{
+    position:fixed;
+    inset:0;
+    background:var(--bg);
+    display:none;
+    flex-direction:column;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+    z-index:10;
+  }
+  #editScreen.open{ display:flex; }
+  .edit-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px;
+    border-bottom:1px solid var(--surface-2);
+  }
+  .edit-header h1{ font-size:17px; margin:0; }
+  .edit-body{
+    flex:1;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    padding:14px 16px 30px;
+  }
+  .settings-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .field{
+    flex:1;
+    background:var(--surface);
+    border-radius:12px;
+    padding:10px 12px;
+  }
+  .field label{
+    display:block;
+    font-size:11px;
+    color:var(--text-dim);
+    font-weight:700;
+    letter-spacing:0.04em;
+    margin-bottom:4px;
+  }
+  .field input{
+    width:100%;
+    background:none;
+    border:none;
+    color:var(--text);
+    font-size:16px;
+    font-weight:700;
+    font-family:inherit;
+  }
+  .field input:focus{ outline:none; }
+
+  .ex-list{ display:flex; flex-direction:column; gap:10px; }
+  .ex-row{
+    background:var(--surface);
+    border-radius:14px;
+    padding:12px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .ex-handle{ color:var(--text-dim); font-size:18px; padding:4px; }
+  .ex-main{ flex:1; min-width:0; }
+  .ex-main input[type=text]{
+    width:100%;
+    background:none;
+    border:none;
+    color:var(--text);
+    font-size:16px;
+    font-weight:700;
+    font-family:inherit;
+    padding:0 0 6px;
+  }
+  .ex-main input[type=text]:focus{ outline:none; }
+  .ex-times{ display:flex; gap:14px; }
+  .ex-times label{
+    font-size:11px;
+    color:var(--text-dim);
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-weight:600;
+  }
+  .ex-times input[type=number]{
+    width:44px;
+    background:var(--surface-2);
+    border:none;
+    border-radius:6px;
+    color:var(--text);
+    font-size:13px;
+    font-weight:700;
+    text-align:center;
+    padding:4px 2px;
+    font-family:inherit;
+  }
+  .ex-del{
+    background:none;
+    border:none;
+    color:var(--danger);
+    font-size:18px;
+    padding:6px;
+    cursor:pointer;
+  }
+  .add-row{
+    margin-top:14px;
+    width:100%;
+    padding:14px;
+    border-radius:14px;
+    border:1.5px dashed var(--surface-2);
+    background:none;
+    color:var(--text-dim);
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .tip{
+    margin-top:22px;
+    font-size:12px;
+    color:var(--text-dim);
+    line-height:1.5;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <span class="app-name">CIRCUIT</span>
+    <button class="icon-btn" id="openEdit" aria-label="Edit circuit">&#9881;</button>
+  </div>
+
+  <div id="timerScreen">
+    <div class="progress-row">
+      <span id="roundLabel">Round 1 of 3</span>
+      <span class="phase-pill idle" id="phasePill">READY</span>
+      <span id="exCount">1 / 5</span>
+    </div>
+
+    <div class="center-stack" id="centerStack">
+      <div class="exercise-name" id="exerciseName">Ready to start</div>
+      <div class="exercise-side" id="exerciseSide"></div>
+      <div class="timer-display" id="timerDisplay">00:00</div>
+      <div class="next-up" id="nextUp">Tap Start when you're ready</div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" id="skipBtn">Skip</button>
+      <button class="btn btn-primary" id="startBtn">Start</button>
+      <button class="btn btn-secondary" id="resetBtn">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div id="editScreen">
+  <div class="edit-header">
+    <h1>Edit circuit</h1>
+    <button class="icon-btn" id="closeEdit" aria-label="Done">Done</button>
+  </div>
+  <div class="edit-body">
+    <div class="settings-row">
+      <div class="field">
+        <label>ROUNDS</label>
+        <input type="number" id="roundsInput" min="1" max="20" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>REST BETWEEN ROUNDS (S)</label>
+        <input type="number" id="roundRestInput" min="0" max="600" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="ex-list" id="exList"></div>
+
+    <button class="add-row" id="addExercise">+ Add exercise</button>
+
+    <div class="tip">Tip: add this page to your Home Screen (Share → Add to Home Screen) so it opens like an app, one tap, every day.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "circuitTimerData_v1";
+
+  var defaultData = {
+    rounds: 3,
+    roundRest: 40,
+    exercises: [
+      { name:"Bulgarian Split Squat", side:"Left Side", work:60, rest:20 },
+      { name:"Bulgarian Split Squat", side:"Right Side", work:60, rest:20 },
+      { name:"Skier Squats", side:"", work:60, rest:20 },
+      { name:"Stabilization Step Up", side:"Left Side", work:90, rest:20 },
+      { name:"Stabilization Step Up", side:"Right Side", work:90, rest:20 }
+    ]
+  };
+
+  function loadData(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(parsed && Array.isArray(parsed.exercises) && parsed.exercises.length){
+          return parsed;
+        }
+      }
+    }catch(e){}
+    return JSON.parse(JSON.stringify(defaultData));
+  }
+
+  function saveData(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){}
+  }
+
+  var data = loadData();
+
+  // ---------- state machine ----------
+  // phase: idle | countdown | work | rest | roundrest | done
+  var state = {
+    phase:"idle",
+    roundIndex:0,
+    exIndex:0,
+    remaining:0,
+    running:false,
+    tickHandle:null,
+    lastTick:0
+  };
+
+  var els = {
+    roundLabel: document.getElementById("roundLabel"),
+    phasePill: document.getElementById("phasePill"),
+    exCount: document.getElementById("exCount"),
+    exerciseName: document.getElementById("exerciseName"),
+    exerciseSide: document.getElementById("exerciseSide"),
+    timerDisplay: document.getElementById("timerDisplay"),
+    nextUp: document.getElementById("nextUp"),
+    startBtn: document.getElementById("startBtn"),
+    skipBtn: document.getElementById("skipBtn"),
+    resetBtn: document.getElementById("resetBtn"),
+    app: document.getElementById("app"),
+    centerStack: document.getElementById("centerStack")
+  };
+
+  function fmt(sec){
+    sec = Math.max(0, Math.ceil(sec));
+    var m = Math.floor(sec/60);
+    var s = sec%60;
+    return (m<10?"0":"")+m+":"+(s<10?"0":"")+s;
+  }
+
+  function currentExercise(){ return data.exercises[state.exIndex]; }
+
+  function setPhaseVisual(phase){
+    els.phasePill.className = "phase-pill " + phase;
+    var labels = { idle:"READY", countdown:"GET READY", work:"WORK", rest:"REST", roundrest:"ROUND REST", done:"DONE" };
+    els.phasePill.textContent = labels[phase] || "";
+    var bgMap = {
+      idle: "var(--bg)",
+      countdown: "var(--bg)",
+      work: "var(--work-dim)",
+      rest: "var(--rest-dim)",
+      roundrest: "var(--round-dim)",
+      done: "var(--bg)"
+    };
+    els.app.style.background = bgMap[phase] || "var(--bg)";
+  }
+
+  function describeNext(){
+    if(state.phase === "work"){
+      var ex = currentExercise();
+      if(ex.rest > 0){
+        return "Then rest " + ex.rest + "s";
+      }
+      return peekNextLabel();
+    }
+    if(state.phase === "rest"){
+      return peekNextLabel();
+    }
+    if(state.phase === "roundrest"){
+      return "Round " + (state.roundIndex+2) + " of " + data.rounds + " next";
+    }
+    return "";
+  }
+
+  function peekNextLabel(){
+    var nextExIndex = state.exIndex + 1;
+    if(nextExIndex < data.exercises.length){
+      var nx = data.exercises[nextExIndex];
+      return "Next: <b>" + nx.name + (nx.side ? " ("+nx.side+")" : "") + "</b>";
+    } else if(state.roundIndex + 1 < data.rounds){
+      return "Round " + (state.roundIndex+2) + " of " + data.rounds + " next";
+    } else {
+      return "Last one — almost done";
+    }
+  }
+
+  function render(){
+    els.roundLabel.textContent = "Round " + (state.roundIndex+1) + " of " + data.rounds;
+    els.exCount.textContent = (state.exIndex+1) + " / " + data.exercises.length;
+
+    if(state.phase === "idle"){
+      var first = data.exercises[0];
+      els.exerciseName.textContent = first ? first.name : "Add an exercise";
+      els.exerciseSide.textContent = first && first.side ? first.side : "";
+      els.timerDisplay.textContent = first ? fmt(first.work) : "00:00";
+      els.nextUp.innerHTML = "Tap Start when you're ready";
+      setPhaseVisual("idle");
+      els.startBtn.textContent = "Start";
+      els.startBtn.classList.remove("running");
+      return;
+    }
+
+    if(state.phase === "done"){
+      els.centerStack.innerHTML =
+        '<div class="done-screen">' +
+          '<div class="big">Circuit complete</div>' +
+          '<div class="sub">' + data.rounds + ' rounds · ' + data.exercises.length + ' exercises</div>' +
+        '</div>';
+      setPhaseVisual("done");
+      els.startBtn.textContent = "Start again";
+      els.startBtn.classList.remove("running");
+      return;
+    }
+
+    if(state.phase === "roundrest"){
+      els.exerciseName.textContent = "Round " + (state.roundIndex+1) + " complete";
+      els.exerciseSide.textContent = "";
+      els.timerDisplay.textContent = fmt(state.remaining);
+      els.nextUp.innerHTML = describeNext();
+      setPhaseVisual(state.phase);
+      els.startBtn.textContent = state.running ? "Pause" : "Resume";
+      els.startBtn.classList.toggle("running", state.running);
+      return;
+    }
+
+    var ex = currentExercise();
+    els.exerciseName.textContent = ex.name;
+    els.exerciseSide.textContent = ex.side || "";
+    els.timerDisplay.textContent = fmt(state.remaining);
+    els.nextUp.innerHTML = describeNext();
+    setPhaseVisual(state.phase);
+    els.startBtn.textContent = state.running ? "Pause" : "Resume";
+    els.startBtn.classList.toggle("running", state.running);
+  }
+
+  // ---------- audio cue (no external files) ----------
+  var audioCtx = null;
+  function beep(freq, dur){
+    try{
+      if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + dur + 0.02);
+    }catch(e){}
+  }
+  function transitionBeep(){ beep(880, 0.18); if(navigator.vibrate){ navigator.vibrate(150); } }
+  function countBeep(){ beep(520, 0.08); }
+  function finishBeep(){ beep(660,0.14); setTimeout(function(){beep(880,0.22);},150); }
+
+  // ---------- wake lock ----------
+  var wakeLock = null;
+  function requestWakeLock(){
+    if("wakeLock" in navigator){
+      navigator.wakeLock.request("screen").then(function(wl){ wakeLock = wl; }).catch(function(){});
+    }
+  }
+  function releaseWakeLock(){
+    if(wakeLock){ wakeLock.release().catch(function(){}); wakeLock = null; }
+  }
+
+  // ---------- timer engine ----------
+  var lastBeepSecond = null;
+
+  function advancePhase(){
+    if(state.phase === "work"){
+      var ex = currentExercise();
+      if(ex.rest > 0){
+        state.phase = "rest";
+        state.remaining = ex.rest;
+      } else {
+        moveToNextExercise();
+        return;
+      }
+    } else if(state.phase === "rest"){
+      moveToNextExercise();
+      return;
+    } else if(state.phase === "roundrest"){
+      state.roundIndex++;
+      state.exIndex = 0;
+      startExerciseWork();
+      return;
+    }
+    lastBeepSecond = null;
+    transitionBeep();
+    render();
+  }
+
+  function moveToNextExercise(){
+    state.exIndex++;
+    if(state.exIndex >= data.exercises.length){
+      if(state.roundIndex + 1 >= data.rounds){
+        finishCircuit();
+        return;
+      }
+      if(data.roundRest > 0){
+        state.phase = "roundrest";
+        state.remaining = data.roundRest;
+        state.exIndex = 0;
+        lastBeepSecond = null;
+        transitionBeep();
+        render();
+        return;
+      } else {
+        state.roundIndex++;
+        state.exIndex = 0;
+        startExerciseWork();
+        return;
+      }
+    }
+    startExerciseWork();
+  }
+
+  function startExerciseWork(){
+    state.phase = "work";
+    state.remaining = currentExercise().work;
+    lastBeepSecond = null;
+    transitionBeep();
+    render();
+  }
+
+  function finishCircuit(){
+    state.phase = "done";
+    state.running = false;
+    stopTicking();
+    releaseWakeLock();
+    finishBeep();
+    render();
+  }
+
+  function tick(){
+    var now = performance.now();
+    var dt = (now - state.lastTick) / 1000;
+    state.lastTick = now;
+    state.remaining -= dt;
+
+    var secLeft = Math.ceil(state.remaining);
+    if(secLeft <= 3 && secLeft > 0 && secLeft !== lastBeepSecond && state.remaining > 0){
+      lastBeepSecond = secLeft;
+      countBeep();
+    }
+
+    if(state.remaining <= 0){
+      advancePhase();
+    } else {
+      render();
+    }
+  }
+
+  function startTicking(){
+    stopTicking();
+    state.lastTick = performance.now();
+    state.tickHandle = setInterval(tick, 100);
+  }
+  function stopTicking(){
+    if(state.tickHandle){ clearInterval(state.tickHandle); state.tickHandle = null; }
+  }
+
+  function toggleStartPause(){
+    if(data.exercises.length === 0){ return; }
+
+    if(state.phase === "idle"){
+      state.roundIndex = 0;
+      state.exIndex = 0;
+      startExerciseWork();
+      state.running = true;
+      startTicking();
+      requestWakeLock();
+      render();
+      return;
+    }
+    if(state.phase === "done"){
+      resetAll();
+      return;
+    }
+    if(state.running){
+      state.running = false;
+      stopTicking();
+      releaseWakeLock();
+    } else {
+      state.running = true;
+      state.lastTick = performance.now();
+      startTicking();
+      requestWakeLock();
+    }
+    render();
+  }
+
+  function skip(){
+    if(state.phase === "idle" || state.phase === "done"){ return; }
+    advancePhase();
+  }
+
+  function resetAll(){
+    state.phase = "idle";
+    state.roundIndex = 0;
+    state.exIndex = 0;
+    state.remaining = 0;
+    state.running = false;
+    lastBeepSecond = null;
+    stopTicking();
+    releaseWakeLock();
+    els.centerStack.innerHTML =
+      '<div class="exercise-name" id="exerciseName"></div>' +
+      '<div class="exercise-side" id="exerciseSide"></div>' +
+      '<div class="timer-display" id="timerDisplay"></div>' +
+      '<div class="next-up" id="nextUp"></div>';
+    els.exerciseName = document.getElementById("exerciseName");
+    els.exerciseSide = document.getElementById("exerciseSide");
+    els.timerDisplay = document.getElementById("timerDisplay");
+    els.nextUp = document.getElementById("nextUp");
+    render();
+  }
+
+  els.startBtn.addEventListener("click", toggleStartPause);
+  els.skipBtn.addEventListener("click", skip);
+  els.resetBtn.addEventListener("click", resetAll);
+
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible" && state.running){
+      state.lastTick = performance.now();
+      requestWakeLock();
+    }
+  });
+
+  // ---------- edit screen ----------
+  var editScreen = document.getElementById("editScreen");
+  var exList = document.getElementById("exList");
+  var roundsInput = document.getElementById("roundsInput");
+  var roundRestInput = document.getElementById("roundRestInput");
+
+  document.getElementById("openEdit").addEventListener("click", function(){
+    renderEditList();
+    editScreen.classList.add("open");
+  });
+  document.getElementById("closeEdit").addEventListener("click", function(){
+    commitSettings();
+    saveData();
+    editScreen.classList.remove("open");
+    if(state.phase === "idle"){ render(); }
+  });
+
+  function commitSettings(){
+    var r = parseInt(roundsInput.value, 10);
+    var rr = parseInt(roundRestInput.value, 10);
+    data.rounds = isNaN(r) || r < 1 ? 1 : r;
+    data.roundRest = isNaN(rr) || rr < 0 ? 0 : rr;
+  }
+
+  function renderEditList(){
+    roundsInput.value = data.rounds;
+    roundRestInput.value = data.roundRest;
+    exList.innerHTML = "";
+    data.exercises.forEach(function(ex, i){
+      var row = document.createElement("div");
+      row.className = "ex-row";
+      row.innerHTML =
+        '<div class="ex-main">' +
+          '<input type="text" class="nameInput" value="' + escapeHtml(ex.name) + '" placeholder="Exercise name">' +
+          '<div class="ex-times">' +
+            '<label>Side <input type="text" class="sideInput" value="' + escapeHtml(ex.side||"") + '" style="width:70px;text-align:left;padding-left:4px;" placeholder="optional"></label>' +
+            '<label>Work <input type="number" class="workInput" min="0" max="600" value="' + ex.work + '"> s</label>' +
+            '<label>Rest <input type="number" class="restInput" min="0" max="300" value="' + ex.rest + '"> s</label>' +
+          '</div>' +
+        '</div>' +
+        '<button class="ex-del" aria-label="Remove">&times;</button>';
+
+      row.querySelector(".nameInput").addEventListener("input", function(e){ data.exercises[i].name = e.target.value; });
+      row.querySelector(".sideInput").addEventListener("input", function(e){ data.exercises[i].side = e.target.value; });
+      row.querySelector(".workInput").addEventListener("input", function(e){ data.exercises[i].work = parseInt(e.target.value,10) || 0; });
+      row.querySelector(".restInput").addEventListener("input", function(e){ data.exercises[i].rest = parseInt(e.target.value,10) || 0; });
+      row.querySelector(".ex-del").addEventListener("click", function(){
+        data.exercises.splice(i,1);
+        saveData();
+        renderEditList();
+      });
+
+      exList.appendChild(row);
+    });
+  }
+
+  document.getElementById("addExercise").addEventListener("click", function(){
+    data.exercises.push({ name:"New exercise", side:"", work:45, rest:15 });
+    saveData();
+    renderEditList();
+  });
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c];
+    });
+  }
+
+  // ---------- init ----------
+  render();
+})();
+</script>
+</body>
+</html>
