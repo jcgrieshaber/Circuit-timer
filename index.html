@@ -366,16 +366,35 @@
 
   var STORAGE_KEY = "circuitTimerData_v1";
 
+  // Downhill strength block: eccentric control for hikers and runners
+  var downhillExercises = [
+    { name:"Eccentric Step-Down (3-4s lower)", side:"Left Side", work:45, rest:15 },
+    { name:"Eccentric Step-Down (3-4s lower)", side:"Right Side", work:45, rest:15 },
+    { name:"Reverse Lunge (slow lower)", side:"Left Side", work:45, rest:15 },
+    { name:"Reverse Lunge (slow lower)", side:"Right Side", work:45, rest:15 },
+    { name:"Tempo Goblet Squat (3-4s down)", side:"", work:45, rest:15 },
+    { name:"Single-Leg Romanian Deadlift", side:"Left Side", work:45, rest:15 },
+    { name:"Single-Leg Romanian Deadlift", side:"Right Side", work:45, rest:15 },
+    { name:"Nordic / Slider Hamstring Curl", side:"", work:40, rest:20 },
+    { name:"Lateral Step-Down", side:"Left Side", work:45, rest:15 },
+    { name:"Lateral Step-Down", side:"Right Side", work:45, rest:15 },
+    { name:"Calf Raise (slow lower)", side:"", work:45, rest:15 },
+    { name:"Tibialis Raise", side:"", work:45, rest:15 },
+    { name:"Single-Leg Hop & Stick Landing", side:"Left Side", work:30, rest:20 },
+    { name:"Single-Leg Hop & Stick Landing", side:"Right Side", work:30, rest:20 }
+  ];
+
   var defaultData = {
     rounds: 3,
     roundRest: 40,
+    downhillAdded: true,
     exercises: [
       { name:"Bulgarian Split Squat", side:"Left Side", work:60, rest:20 },
       { name:"Bulgarian Split Squat", side:"Right Side", work:60, rest:20 },
       { name:"Skier Squats", side:"", work:60, rest:20 },
       { name:"Stabilization Step Up", side:"Left Side", work:90, rest:20 },
       { name:"Stabilization Step Up", side:"Right Side", work:90, rest:20 }
-    ]
+    ].concat(downhillExercises)
   };
 
   function loadData(){
@@ -384,6 +403,12 @@
       if(raw){
         var parsed = JSON.parse(raw);
         if(parsed && Array.isArray(parsed.exercises) && parsed.exercises.length){
+          // One-time migration: append the downhill block to an existing saved circuit
+          if(!parsed.downhillAdded){
+            parsed.exercises = parsed.exercises.concat(JSON.parse(JSON.stringify(downhillExercises)));
+            parsed.downhillAdded = true;
+            try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); }catch(e){}
+          }
           return parsed;
         }
       }
